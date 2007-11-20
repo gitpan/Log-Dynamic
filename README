@@ -1,0 +1,15 @@
+* perldoc lib/Log/Dynamic.pm (or perldoc Log::Dynamic once
+  installed) for all the usage details.
+
+* Install using either Build.PL or Makefile.PL. They are 
+  basically the same:
+
+    % perl Build.PL
+    % ./Build test
+    % sudo ./Build install
+
+         - OR -
+
+    % perl Makefile.PL
+    % make test
+    % sudo make install

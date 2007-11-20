@@ -1,0 +1,19 @@
+---
+name: Log-Dynamic
+version: 0.01
+author:
+  - James Conerly
+abstract: OOish dynamic and customizable logging
+license: perl
+resources:
+  license: http://dev.perl.org/licenses/
+requires:
+  Carp: 0
+provides:
+  Log::Dynamic:
+    file: lib/Log/Dynamic.pm
+    version: 0.01
+generated_by: Module::Build version 0.2808
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2
