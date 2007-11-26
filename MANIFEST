@@ -1,10 +1,8 @@
 Build.PL
-lib/Log/Dynamic.pm
-Makefile.PL
+lib/Log/Dynamic.pm.PL
+lib/Log/Dynamic.pm.template
 MANIFEST			This list of files
 README
-some.pl
-t/.07.ValidType.t.swp
 t/00.Preflight.t
 t/01.Object.t
 t/02.Append.t
@@ -12,5 +10,7 @@ t/03.Clobber.t
 t/04.CustomType.t
 t/05.Stdout.t
 t/06.Stderr.t
-t/07.ValidType.t
+t/07.Case.t
+t/08.ValidType.t
+t/09.Dump.t
 META.yml

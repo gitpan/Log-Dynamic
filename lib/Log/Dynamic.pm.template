@@ -1,14 +1,18 @@
 package Log::Dynamic;
 
-$VERSION = 0.01;
+$VERSION = 0.02;
 
 use strict;
 use warnings;
 
 use Carp;
+use Data::Dumper;
+
+__USE_PRIVATE__
 
 my $PKG   = __PACKAGE__;
 my $MODE  = '>>';  # By default we append
+my $UCASE = 1;     # By default we force types to upper case
 my $TYPES = undef;
 
 # Constructor
@@ -22,7 +26,7 @@ sub open {
 }
 
 # Initialize our params
-sub _init {
+sub _init __PRIVATE__ {
 	my $args = shift;
 	my $fh;
 
@@ -35,12 +39,17 @@ sub _init {
 		$MODE = '>';
 	}
 
+	# Override ucase mode if requested
+	if (exists $args->{'ucase'} && !$args->{'ucase'}) {
+		$UCASE = 0;
+	}
+
 	_init_types($args->{'types'},$args->{'invalid_type'});
 
 	if ($args->{'file'} =~ /STD(?:OUT|ERR)/i) {
 		$fh = uc $args->{'file'};
 	} else {
-		CORE::open $fh, $MODE, $args->{'file'}
+		CORE::open($fh, $MODE, $args->{'file'})
 			or croak "$PKG: Failed to open file '$args->{file}': $!";
 	}
 
@@ -49,7 +58,7 @@ sub _init {
 
 # Type initialization was a large enough chunk of code that
 # I felt it should be pulled into its own subroutine.
-sub _init_types {
+sub _init_types __PRIVATE__ {
 	my $types   = shift || return;
 	my $handler = shift || \&_invalid_type;
 
@@ -60,12 +69,18 @@ sub _init_types {
 	# A Smudge of error checking. Non-empty array ref please
 	croak "$PKG: Value for the 'types' param must be an array ref"
 		unless ref $types eq 'ARRAY';
+
 	croak "$PKG: Value for the 'types' param must not be an empty list"
 		unless @{ $types };
 
-	# We have types! Make a hash of types for easy lookup and
-	# store our invalid type handler.
-	$TYPES = { map { $_ => 1 } @{ $types } };
+	# We have types! Make a hash of types for easy lookup. 
+	# Note that we explicitly register dump here as a valid 
+	# type. If we didn't the sub that validates types would 
+	# crap out when calling dump(). Seems a bit hacky, I know... 
+	# but for the time being I think this solution is OK.
+	$TYPES = { map { $_ => 1 } @{ $types }, 'dump' };
+
+	# Store our invalid type handler.
 	$TYPES->{'_handle_invalid'} = $handler;
 }
 
@@ -73,7 +88,7 @@ sub _init_types {
 # constructor notation of new(), here you go.
 sub new { shift->open(@_) }
 
-# O'hai. Sry, we closed...
+# O'hai. Sry, we closing...
 sub close { close ${(shift)} }
 
 # Base logging function
@@ -100,7 +115,34 @@ sub log {
 	# we can print to STDERR and STDOUT witout perl spitting an 
 	# error and dying.
 	no strict 'refs';
-	print {$$fh} "$time [".uc($type)."] $msg ($call)\n";
+	print {$$fh} "$time [".($UCASE?uc($type):$type)."] $msg ($call)\n";
+}
+
+sub dump {
+	my $log  = shift;
+	my $args = shift;
+
+	unless (ref $args) {
+		carp "$PKG: dump() requires a hash ref of arg=>value pairs";
+		return;
+	}
+
+	unless ($args->{'data'}) {
+		carp "$PKG: dump() requires the 'data' argument be supplied";
+		return;
+	}
+
+	# Set defaults
+	$args->{'dump_type'} ||= 'dump';
+	$args->{'dump_name'} ||= 'anonymous data';
+	$args->{'begin_msg'} ||= 'BEGIN dump for:'; 
+	$args->{'end_msg'  } ||= 'END dump for:';
+
+	$log->log($args->{'dump_type'},
+		$args->{'begin_msg'}    . " '$args->{dump_name}'\n" .
+		Dumper($args->{'data'}) .
+		$args->{'end_msg'}      . " '$args->{dump_name}'"
+	);
 }
 
 sub AUTOLOAD {
@@ -115,7 +157,7 @@ sub AUTOLOAD {
 	# Define a subroutine for our new type. Since this new
 	# sub just turns around and calls log() with a set value
 	# for the $type variable you can probably lable this a 
-	# form of function currying. 
+	# form of function currying. Weeeeee =)
 	{
 		no strict;
 		no warnings;
@@ -126,8 +168,11 @@ sub AUTOLOAD {
 	$log->log($type,@_);
 }
 
+# Chage the ucase value
+sub ucase { shift;$UCASE = shift || 0}
+
 # Valid log type
-sub _validate_type {
+sub _validate_type __PRIVATE__ {
 	my $type = shift;
 
 	if (defined $TYPES and not $TYPES->{$type}) {
@@ -135,7 +180,7 @@ sub _validate_type {
 	} 
 }
 
-sub _invalid_type {
+sub _invalid_type __PRIVATE__ {
 	my $type = shift;
 	croak "$PKG: Type '$type' was not specified as a valid type";
 }
@@ -145,19 +190,15 @@ sub DESTROY { shift->close }
 
 1;
 
-# TODO:
-#  1. Custom log entry formatting
-#  2. dump() function
-
 __END__
 
 =head1 NAME
 
-B<Log::Dynamic> - OOish dynamic and customizable logging
+Log::Dynamic (__VERSION__) - OOish dynamic and customizable logging
 
 =head1 SYNOPSIS
 
-I<Object instatiation>
+=head2 Object instatiation
 
    use Log::Dynamic;
 
@@ -187,13 +228,13 @@ I<Object instatiation>
        invalid_type => sub { "INVALID TYPE: ".(shift)."\n" },
    );
 
-I<Basic logging>
+=head2 Basic logging
 
-   # Just like many other logging packages:
+   # Just like many other logging packages: log(TYPE, MESSAGE)
    $log->log('INFO', 'I can has info?');
    $log->log('ERROR', 'Oh crapz! Someone killed a kittah!');
 
-I<Custom logging>
+=head2 Custom logging
 
    # Call any log type you like as an object method. For 
    # example, if you are logging cache hits and misses you 
@@ -206,11 +247,11 @@ I<Custom logging>
        $CACHE->{$key} = do_expensive_operation(@args);
    }
 
-I<Other usage>
+=head2 Other usage
 
    # Use the object as a file handle for print() statements
    # from within your script or application:
-   print {$$log} "This is a custom message. Pay attention!\n";
+   print {$$log} "This is a special message. Pay attention!\n";
 
 =head1 DESCRIPTION
 
@@ -218,17 +259,25 @@ Yet another darn logger? Why d00d?
 
 Well, I wanted to write a lite weight logging module that...
 
- * developers could use in a way that felt natural to them
-   and it would just work, 
+=over 2
 
- * was adaptable enough that it could be used in dynamic, 
-   ever changing environments,
+=item * 
 
- * was flexible enough to satisfy most logging needs without 
-   too much overhead,
+developers could use in a way that felt natural to them and it would just work, 
 
- * and gave developers full control over handling the myriad
-   of log events that occur in large applications.
+=item * 
+
+was adaptable enough that it could be used in dynamic, ever changing environments,
+
+=item * 
+
+was flexible enough to satisfy most logging needs without too much overhead,
+
+=item *
+
+and gave developers full control over handling the myriad of log events that occur in large applications.
+
+=back
 
 Log::Dynamic still has a ways to go, but the direction seems 
 promising. Comments and suggestions are always welcome. 
@@ -277,7 +326,7 @@ object like:
     );
 
 If you decide to define a set of valid types and your application attempts
-to log with an invalid type, then, B<by default Log::Dynamic will croak with 
+to log with an invalid type then, by default, B<Log::Dynamic will croak with 
 an appropriate error>. _HOWEVER_, if you don't want to go around your 
 application wrapping each log call in an eval then you may override this 
 behavior using the 'invalid_type' parameter:
@@ -294,34 +343,59 @@ the string of the invalid type that your application attempted to use.
 
 =head1 METHODS
 
-=over 4
-
-=item *
-
-B<open()>
+=head2 open
 
 This is the object constructor. (Sure, you can still use new()
 if you wish) B<open()> has two available parameters, each with
 several allowed values. They are:
 
-B<file> : file name, STDOUT, STDERR
+=over 2
 
-    -REQUIRED-
+=item *
 
-B<mode> : append, clobber
+B<file> (required)
 
-    -OPTIONAL- The default value is 'append'.
+Values: file name, STDOUT or STDERR
 
-B<types> : array ref of your valid types
+=item *
 
-    -OPTIONAL- By default Log::Dynamic lets you call _ANY_ type as 
-    a method. However, if you would like to limit the set of valid 
-    types you can do that using this parameter. Once the list is set, 
-    if an invalid type is called Log::Dynamic croaks with a message.
+B<mode> (optional)
 
-B<invalid_type> : code ref to handle invalid types
+Values: 'append' or 'clobber'
 
-    -OPTIONAL- See LIMITING LOG TYPES above.
+The default value is 'append'.
+
+=item *
+
+B<types> (optional)
+
+Values: [qw/array ref of your valid types/]
+
+By default Log::Dynamic lets you call _ANY_ type as 
+a method. However, if you would like to limit the set of valid 
+types you can do that using this parameter. Once the list is set, 
+if an invalid type is called Log::Dynamic croaks with a message.
+
+=item *
+
+B<invalid_type> (optional)
+
+Value: code ref to handle invalid types
+
+See B<LIMITING LOG TYPES> above.
+
+=item *
+
+B<ucase> (optional)
+
+Values: 0 or 1
+
+By default all types are forced to uppercase when printed to the
+logs. For example, a call to C<$log-E<gt>SomeError('Foo')> would
+show up in the log as '... [SOMEERROR] Foo ...'. If you would like 
+to maintain case then set the 'ucase' flag to a non-true value.
+
+=back
 
 Here is an example instantiation for logging to a file that 
 you want to clobber:
@@ -338,15 +412,11 @@ Here is an example instantiation for logging to STDERR:
 As you can see there is no need to quote STDERR and STDOUT, but
 it will still work if you choose to quote them.
 
-=item *
-
-B<close()>
+=head2 close
 
 Close the file handle.
 
-=item *
-
-B<log()>
+=head2 log
 
 Your basic log subroutine. just give it the log type and
 the log message:
@@ -355,24 +425,109 @@ the log message:
 
 Message Types are discussed above.
 
+=head2 dump
+
+Use this subroutine if you would like to dump the contents of a data
+structure or object to your log file. This sub is different from the
+other logging subs in that it requires you pass it a hash reference
+of arg/value pairs. Only the 'data' arg is required, however there 
+are several others you can use to customize your dump output. They
+are:
+
+=over 2
+
 =item *
 
-B<Custom Methods>
+B<data> (required)
+
+Reference to the data structure or object you want to dump.
+
+=item *
+
+B<dump_name> (optional)
+
+The name you want to give to your dumped data structure. Default:
+'anonymous data'.
+
+=item *
+
+B<dump_type> (optional)
+
+The type string that you want to associate with this dump. Default:
+'DUMP'.
+
+=item *
+
+B<begin_msg> (optional)
+
+Message printed before the dump. Default: 'BEGIN dump for:'.
+
+=item *
+
+B<end_msg> (optional)
+
+Message printed after the dump, Default: 'END dump for:'.
+
+=back
+
+Here is example output if you specify _only_ the required 'data' argument:
+
+Code:
+
+    my $data = { foo => 'abc', bar => [qw/baz bing] };
+    $log->dump({ data => $data });
+
+Output:
+
+    Sat Nov 24 14:05:29 2007 [DUMP] BEGIN dump for: 'anonymous data'
+    $VAR1 = {
+              'bar' => [
+                         'baz',
+                         'bing'
+                       ],
+              'foo' => 'abc'
+            };
+    END dump for: 'anonymous data' (main my-script.pl 21)
+
+Here is example output where all arguments are specified:
+
+Code:
+
+    my $whoop = { foo => 'abc', bar => [qw/baz bing] };
+    $log->dump({
+        data      => $whoop,
+        dump_name => 'Whoop',
+        dump_type => 'its a whoop!',
+        begin_msg => 'Lets start rocking with:',
+        end_msg   => 'Chill out, its over for:',
+    });
+
+Output:
+
+    Sat Nov 24 14:13:26 2007 [ITS A WHOOP!] Lets start rocking with: 'Whoop'
+    $VAR1 = {
+              'bar' => [
+                         'baz',
+                         'bing'
+                       ],
+              'foo' => 'abc'
+            };
+    Chill out, its over for: 'Whoop' (main whoop.pl 123)
+
+=head2 Custom Methods
 
 Log any type of message you want simply by calling the type as an
 object method. For example, if you want to log a message with a 
 type of ALARM you would do:
 
-   $log->alarm('OONTZ!');
+    $log->alarm('OONTZ!');
 
 This would print a log entry that looks like:
 
-   Thu Nov  8 21:14:12 2007 [ALARM] OONTZ! (main techno.pl 42)
+    Thu Nov  8 21:14:12 2007 [ALARM] OONTZ! (main techno.pl 42)
 
 This functionality was the impetus for writing this module.
 What ever type you want to see in the log B<JUST USE IT!> =)
-
-=back
 
 =head1 OTHER USAGE
 
@@ -415,6 +570,7 @@ that, log away my friends.
 
 =head1 SEE ALSO
 
-Carp
+ Carp 
+ __USE_PRIVATE__
 
 =cut

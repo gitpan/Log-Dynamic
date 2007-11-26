@@ -8,7 +8,7 @@ use Test::More;
 use Log::Dynamic;
 
 my $file  = 'test.log';
-my $log   = Log::Dynamic->open(file => $file);
+my $log   = Log::Dynamic->open (file => $file);
 my @types = qw/ foo bar baz /;
 
 plan tests => scalar @types;
