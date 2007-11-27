@@ -1,14 +1,12 @@
 package Log::Dynamic;
 
-$VERSION = 0.02;
+$VERSION = 0.03;
 
 use strict;
 use warnings;
 
 use Carp;
 use Data::Dumper;
-
-__USE_PRIVATE__
 
 my $PKG   = __PACKAGE__;
 my $MODE  = '>>';  # By default we append
@@ -26,7 +24,7 @@ sub open {
 }
 
 # Initialize our params
-sub _init __PRIVATE__ {
+sub _init {
 	my $args = shift;
 	my $fh;
 
@@ -58,7 +56,7 @@ sub _init __PRIVATE__ {
 
 # Type initialization was a large enough chunk of code that
 # I felt it should be pulled into its own subroutine.
-sub _init_types __PRIVATE__ {
+sub _init_types {
 	my $types   = shift || return;
 	my $handler = shift || \&_invalid_type;
 
@@ -172,7 +170,7 @@ sub AUTOLOAD {
 sub ucase { shift;$UCASE = shift || 0}
 
 # Valid log type
-sub _validate_type __PRIVATE__ {
+sub _validate_type {
 	my $type = shift;
 
 	if (defined $TYPES and not $TYPES->{$type}) {
@@ -180,7 +178,7 @@ sub _validate_type __PRIVATE__ {
 	} 
 }
 
-sub _invalid_type __PRIVATE__ {
+sub _invalid_type  {
 	my $type = shift;
 	croak "$PKG: Type '$type' was not specified as a valid type";
 }
@@ -194,7 +192,7 @@ __END__
 
 =head1 NAME
 
-Log::Dynamic (__VERSION__) - OOish dynamic and customizable logging
+B<Log::Dynamic> - OOish dynamic and customizable logging
 
 =head1 SYNOPSIS
 
@@ -263,19 +261,23 @@ Well, I wanted to write a lite weight logging module that...
 
 =item * 
 
-developers could use in a way that felt natural to them and it would just work, 
+developers could use in a way that felt natural to them and 
+it would just work, 
 
 =item * 
 
-was adaptable enough that it could be used in dynamic, ever changing environments,
+was adaptable enough that it could be used in dynamic, ever 
+changing environments,
 
 =item * 
 
-was flexible enough to satisfy most logging needs without too much overhead,
+was flexible enough to satisfy most logging needs without 
+too much overhead,
 
 =item *
 
-and gave developers full control over handling the myriad of log events that occur in large applications.
+and gave developers full control over handling the myriad 
+of log events that occur in large applications.
 
 =back
 
@@ -284,7 +286,7 @@ promising. Comments and suggestions are always welcome.
 
 =head1 LOG FORMAT
 
-Currently Log::Dynamic has only one format for the log entries which
+Currently Log::Dynamic has only one format for the log entries. This
 looks like:
 
     TIME/DATE STAMP [LOG TYPE] LOG MESSAGE (CALLER INFO)
@@ -343,11 +345,11 @@ the string of the invalid type that your application attempted to use.
 
 =head1 METHODS
 
-=head2 open
+=head2 open()
 
-This is the object constructor. (Sure, you can still use new()
-if you wish) B<open()> has two available parameters, each with
-several allowed values. They are:
+This is the object constructor. (Sure, you can still use new() if 
+you wish) The open() method has a number of available parameters, 
+each with several allowed values. They are:
 
 =over 2
 
@@ -369,12 +371,14 @@ The default value is 'append'.
 
 B<types> (optional)
 
-Values: [qw/array ref of your valid types/]
+Values: [qw/ array ref of your valid types /]
 
 By default Log::Dynamic lets you call _ANY_ type as 
 a method. However, if you would like to limit the set of valid 
 types you can do that using this parameter. Once the list is set, 
 if an invalid type is called Log::Dynamic croaks with a message.
+(Or excutes a method that can be specified using the following
+parameter)
 
 =item *
 
@@ -412,11 +416,11 @@ Here is an example instantiation for logging to STDERR:
 As you can see there is no need to quote STDERR and STDOUT, but
 it will still work if you choose to quote them.
 
-=head2 close
+=head2 close()
 
 Close the file handle.
 
-=head2 log
+=head2 log()
 
 Your basic log subroutine. just give it the log type and
 the log message:
@@ -425,7 +429,7 @@ the log message:
 
 Message Types are discussed above.
 
-=head2 dump
+=head2 dump()
 
 Use this subroutine if you would like to dump the contents of a data
 structure or object to your log file. This sub is different from the
@@ -514,6 +518,17 @@ Output:
             };
     Chill out, its over for: 'Whoop' (main whoop.pl 123)
 
+=head2 ucase()
+
+Change the boolean value for the 'ucase' flag. Recommended usage:
+
+    $log->ucase(0);  # The case for types will be preserved
+                     #   - OR -
+    $log->ucase(1);  # Types will be forced to uppercase (default)
+
+The 'ucase' flag is explained above in the description for the 
+open() method.
+
 =head2 Custom Methods
 
 Log any type of message you want simply by calling the type as an
@@ -571,6 +586,5 @@ that, log away my friends.
 =head1 SEE ALSO
 
  Carp 
- __USE_PRIVATE__
 
 =cut

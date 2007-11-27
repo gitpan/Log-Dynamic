@@ -10,7 +10,7 @@ Module::Build->new (
 	license           => 'perl',
 	dist_author       => 'James Conerly',
 	dist_abstract     => 'OOish dynamic and customizable logging',
-	dist_version_from => 'lib/Log/Dynamic.pm.template',
+	dist_version_from => 'lib/Log/Dynamic.pm',
 	requires          => { 
 		'Carp'         => 0,
 		'Data::Dumper' => '2.121_08', 

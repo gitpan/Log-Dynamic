@@ -1,6 +1,5 @@
 Build.PL
-lib/Log/Dynamic.pm.PL
-lib/Log/Dynamic.pm.template
+lib/Log/Dynamic.pm
 MANIFEST			This list of files
 README
 t/00.Preflight.t
