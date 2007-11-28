@@ -1,6 +1,6 @@
 package Log::Dynamic;
 
-$VERSION = 0.03;
+$VERSION = 0.04;
 
 use strict;
 use warnings;
@@ -313,7 +313,7 @@ Log::Dynamic will automatically do what you want:
 
     $log->new_type('Hai!');
 
-=head1 LIMITING LOG TYPES
+=head2 Limiting types
 
 By default Log::Dynamic supports any log type you throw at it. However,
 if you would like to define a finite set of valid (supported) log types 
@@ -585,6 +585,6 @@ that, log away my friends.
 
 =head1 SEE ALSO
 
- Carp 
+ Carp, Data::Dumper 
 
 =cut
